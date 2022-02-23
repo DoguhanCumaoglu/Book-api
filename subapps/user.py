@@ -4,10 +4,15 @@ import jwt, time
 from fastapi.responses import JSONResponse
 from core.db_items import *
 from fastapi import Request
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 jwt_secret_users = "acaipgizlisifre"
+limiter = Limiter(key_func=get_remote_address)
 user = FastAPI()
-
+user.state.limiter = limiter
+user.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @user.middleware("http")
 async def user_middleware(request: Request, call_next):
@@ -29,7 +34,7 @@ async def user_middleware(request: Request, call_next):
 
 
 @user.post("/recomend/book/")
-async def recomend_book(book_kind:str):
+async def recomend_book(book_kind:str,request: Request):
     try:
         test=[]
         for x in book_col.find({"kind":book_kind }).sort("number_of_sell"):

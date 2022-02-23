@@ -4,9 +4,15 @@ import jwt, time
 from fastapi.responses import JSONResponse
 from core.db_items import *
 from fastapi import Request
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 jwt_secret_users = "acaipgizlisifre"
+limiter = Limiter(key_func=get_remote_address)
 admin = FastAPI()
+admin.state.limiter = limiter
+admin.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 class books(BaseModel):
@@ -42,7 +48,8 @@ async def admin_middleware(request: Request, call_next):
 
 
 @admin.post("/add/book/")
-async def add_book(book: books):
+@limiter.limit("5/minute")
+async def add_book(book: books,request: Request):
     try:
         ts = time.time()
         q = {
@@ -67,7 +74,8 @@ async def add_book(book: books):
         )
 
 @admin.post("/make/discount/")
-async def make_discount(book_name:str, discount_ratio:int):
+@limiter.limit("5/minute")
+async def make_discount(book_name:str, discount_ratio:int,request: Request):
     try:
         data = book_col.find_one({"book_name": book_name})
         temp=data["price"]
@@ -84,8 +92,9 @@ async def make_discount(book_name:str, discount_ratio:int):
         )
 
 
-@admin.post("/update/book/name")
-async def update_book_name(book_name:str,update: update_data):
+@admin.put("/update/book/name")
+@limiter.limit("5/minute")
+async def update_book_name(book_name:str,update: update_data,request: Request):
     try:
         book_col.update_one(
             {"book_name": book_name}, {"$set": {"book_name": update.data.capitalize()}}
@@ -100,8 +109,9 @@ async def update_book_name(book_name:str,update: update_data):
             },
         )
 
-@admin.post("/update/author/name")
-async def update_author_name(book_name:str,update: update_data):
+@admin.put("/update/author/name")
+@limiter.limit("5/minute")
+async def update_author_name(book_name:str,update: update_data,request: Request):
     try:
         book_col.update_one(
             {"book_name": book_name}, {"$set": {"author": update.data.capitalize()}}
@@ -116,8 +126,35 @@ async def update_author_name(book_name:str,update: update_data):
             },
         )
 
-@admin.post("/update/number/of/page")
-async def update_number_of_page(book_name:str,update: update_data):
+@admin.get("/get/book/list")
+@limiter.limit("5/minute")
+async def get_book_list(request: Request):
+    try:
+        temp2=[]
+        temp=book_col.find({})
+        for x in temp:
+            q = {
+                "book_name": x.get("book_name"),
+                "author":x.get("author"),
+                "kind": x.get("kind"),
+                "amount_of_stock":x.get("amount_of_stock"),
+                "number_of_page": x.get("number_of_page"),
+                "number_of_sell": x.get("number_of_sell"),
+                "price": x.get("price")}
+            temp2.append(q)
+        return {"status": "success", "list": temp2}
+    except:
+        return JSONResponse(
+                status_code=503,
+                content={
+                "status": "failed",
+                "message": "Database error!",
+            },
+        )
+
+@admin.put("/update/number/of/page")
+@limiter.limit("5/minute")
+async def update_number_of_page(book_name:str,update: update_data,request: Request):
     try:
         book_col.update_one(
             {"book_name": book_name}, {"$set": {"number_of_page": int(update.data)}}
@@ -131,8 +168,9 @@ async def update_number_of_page(book_name:str,update: update_data):
                 "message": "Database error!",
             },
         )
-@admin.post("/update/kind/of/book")
-async def update_kind(book_name:str,update: update_data):
+@admin.put("/update/kind/of/book")
+@limiter.limit("5/minute")
+async def update_kind(book_name:str,update: update_data,request: Request):
     try:
         book_col.update_one(
             {"book_name": book_name}, {"$set": {"kind": update.data}}
@@ -146,8 +184,9 @@ async def update_kind(book_name:str,update: update_data):
                 "message": "Database error!",
             },
         )
-@admin.post("/update/price/of/book")
-async def uptade_price_of_book(book_name:str,update: update_data):
+@admin.put("/update/price/of/book")
+@limiter.limit("5/minute")
+async def uptade_price_of_book(book_name:str,update: update_data,request: Request):
     try:
         book_col.update_one(
             {"book_name": book_name}, {"$set": {"price": int(update.data)}}
@@ -161,8 +200,9 @@ async def uptade_price_of_book(book_name:str,update: update_data):
                 "message": "Database error!",
             },
         )
-@admin.post("/update/number/of/sell")
-async def uptade_number_of_sell(book_name:str,update: update_data):
+@admin.put("/update/number/of/sell")
+@limiter.limit("5/minute")
+async def uptade_number_of_sell(book_name:str,update: update_data,request: Request):
     try:
         book_col.update_one(
             {"book_name": book_name}, {"$set": {"number_of_sell": int(update.data)}}
@@ -176,8 +216,9 @@ async def uptade_number_of_sell(book_name:str,update: update_data):
                 "message": "Database error!",
             },
         )
-@admin.post("/update/amount/of/stock")
-async def uptade_amount_of_stock(book_name:str,update: update_data):
+@admin.put("/update/amount/of/stock")
+@limiter.limit("5/minute")
+async def uptade_amount_of_stock(book_name:str,update: update_data,request: Request):
     try:
         book_col.update_one(
             {"book_name": book_name}, {"$set": {"amount_of_stock": int(update.data)}}
@@ -191,11 +232,12 @@ async def uptade_amount_of_stock(book_name:str,update: update_data):
                 "message": "Database error!",
             },
         )
-@admin.post("delete/book")
-async def delete_book(update:update_data):
+@admin.delete("/delete/book")
+@limiter.limit("5/minute")
+async def delete_book(update:update_data,request: Request):
     try:
-        q={'book_name': update.data}
-        book_col.delete_one(q)
+        q={"book_name": update.data}
+        book_col.remove(q)
         return {"status": "succes"}
     except:
         return JSONResponse(

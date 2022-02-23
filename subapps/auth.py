@@ -1,13 +1,19 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import pymongo, bcrypt, jwt, time, re
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from core.db_items import *
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 
 jwt_secret_users = "acaipgizlisifre"
+limiter = Limiter(key_func=get_remote_address)
 auth = FastAPI()
-
+auth.state.limiter = limiter
+auth.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 def regexs(n):
     regex = ""
     if n == 0: 
@@ -27,7 +33,8 @@ class register(BaseModel):
     password: str
 
 @auth.post("/login/")
-async def login(user: login):
+@limiter.limit("5/minute")
+async def login(user: login,request: Request):
     try:
         data = user_col.find_one({"username": user.username})
         bcrypt_pass = str.encode(user.password)
@@ -55,7 +62,8 @@ async def login(user: login):
             },
         )
 @auth.post("/register/")
-def register(user: register):
+@limiter.limit("5/minute")
+def register(user: register,request: Request):
     try:
         if(len(user.password)<4):
             return JSONResponse(
