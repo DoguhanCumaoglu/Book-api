@@ -10,11 +10,10 @@ auth = FastAPI()
 
 def regexs(n):
     regex = ""
-    if n == 0:  # name surname için
+    if n == 0: 
         regex = r"^[a-zA-Z-ğĞöÖıİüÜçÇşŞ]+(([',. -][a-zA-Z ])?[a-zA-Z]*)*$"
-    elif n == 1:  # username için
+    elif n == 1:  
         regex = r"^[a-zA-Z-ğĞöÖıİüÜçÇşŞ]+(([a-zA-Z0-9])?[a-zA-Z0-9]*)*$"
-        # 8-16 at leasts one letter one number one pointer
     return regex
 class login(BaseModel):
     username: str
@@ -49,7 +48,7 @@ async def login(user: login):
             }
     except:
         return JSONResponse(
-            status_code=400,
+            status_code=503,
             content={
                 "status": "failed",
                 "message": "Database error!",
@@ -94,7 +93,7 @@ def register(user: register):
             )
         elif len(user.username) < 4 or len(user.username) > 11:
             return JSONResponse(
-                status_code=410,
+                status_code=400,
                 content={
                     "status ": "failed",
                     "message": "length of username must be between 4 and 11",
@@ -102,7 +101,7 @@ def register(user: register):
             )
         if user_col.count_documents(check):
             return JSONResponse(
-                status_code=409,
+                status_code=400,
                 content={"status": "failed", "message": "This username taken before!"},
             )
         if (user.username.startswith("admin")):
@@ -139,7 +138,7 @@ def register(user: register):
             return {"status": "success", "token": token}
     except:
         return JSONResponse(
-            status_code=400,
+            status_code=503,
             content={
                 "status": "failed",
                 "message": "Database error!",

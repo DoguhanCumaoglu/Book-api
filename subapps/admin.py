@@ -21,8 +21,6 @@ class books(BaseModel):
 class update_data(BaseModel):
     data: str
 
-
-
 @admin.middleware("http")
 async def admin_middleware(request: Request, call_next):
     headers = request.headers
@@ -61,12 +59,31 @@ async def add_book(book: books):
         return {"status": "succes"}
     except:
         return JSONResponse(
-                status_code=400,
+                status_code=503,
                 content={
                 "status": "failed",
                 "message": "Database error!",
             },
         )
+
+@admin.post("/make/discount/")
+async def make_discount(book_name:str, discount_ratio:int):
+    try:
+        data = book_col.find_one({"book_name": book_name})
+        temp=data["price"]
+        new_temp=(temp*discount_ratio)/100
+        book_col.update({"book_name": book_name}, {"$set": {"price": new_temp}})
+        return {"status": "succes"}
+    except:
+        return JSONResponse(
+                status_code=503,
+                content={
+                "status": "failed",
+                "message": "Database error!",
+            },
+        )
+
+
 @admin.post("/update/book/name")
 async def update_book_name(book_name:str,update: update_data):
     try:
@@ -92,7 +109,7 @@ async def update_author_name(book_name:str,update: update_data):
         return {"status": "succes"}
     except:
         return JSONResponse(
-                status_code=400,
+                status_code=503,
                 content={
                 "status": "failed",
                 "message": "Database error!",
@@ -108,7 +125,7 @@ async def update_number_of_page(book_name:str,update: update_data):
         return {"status": "succes"}
     except:
         return JSONResponse(
-                status_code=400,
+                status_code=503,
                 content={
                 "status": "failed",
                 "message": "Database error!",
@@ -123,7 +140,7 @@ async def update_kind(book_name:str,update: update_data):
         return {"status": "succes"}
     except:
         return JSONResponse(
-                status_code=400,
+                status_code=503,
                 content={
                 "status": "failed",
                 "message": "Database error!",
@@ -138,7 +155,7 @@ async def uptade_price_of_book(book_name:str,update: update_data):
         return {"status": "succes"}
     except:
         return JSONResponse(
-                status_code=400,
+                status_code=503,
                 content={
                 "status": "failed",
                 "message": "Database error!",
@@ -153,7 +170,7 @@ async def uptade_number_of_sell(book_name:str,update: update_data):
         return {"status": "succes"}
     except:
         return JSONResponse(
-                status_code=400,
+                status_code=503,
                 content={
                 "status": "failed",
                 "message": "Database error!",
@@ -168,7 +185,7 @@ async def uptade_amount_of_stock(book_name:str,update: update_data):
         return {"status": "succes"}
     except:
         return JSONResponse(
-                status_code=400,
+                status_code=503,
                 content={
                 "status": "failed",
                 "message": "Database error!",
@@ -182,7 +199,7 @@ async def delete_book(update:update_data):
         return {"status": "succes"}
     except:
         return JSONResponse(
-                status_code=400,
+                status_code=503,
                 content={
                 "status": "failed",
                 "message": "Database error!",

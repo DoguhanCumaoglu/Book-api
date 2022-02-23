@@ -33,19 +33,20 @@ async def recomend_book(book_kind:str):
     try:
         test=[]
         for x in book_col.find({"kind":book_kind }).sort("number_of_sell"):
-             q = {
+            q = {
                 "book_name": x.get("book_name"),
+                "author":x.get("author"),
+                "number_of_page": x.get("number_of_page"),
                 "number_of_sell": x.get("number_of_sell"),
                 "price": x.get("price")}
-            
-             test.append(q) 
+            test.append(q)
         print(test[-5:])
-       
-    
-        return {"status": test}
+        newlist = sorted(test[-5:], key=lambda d: d['price']) 
+        print(newlist[-5:])
+        return {"status": "success", "list": newlist[-5:]}
     except:
         return JSONResponse(
-                status_code=400,
+                status_code=503,
                 content={
                 "status": "failed",
                 "message": "Database error!",
