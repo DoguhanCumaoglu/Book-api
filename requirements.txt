@@ -8,4 +8,5 @@ uvicorn==0.15.0
 python-multipart==0.0.5
 gunicorn==20.0.4
 limits==1.6
+slowapi==0.1.5
 
