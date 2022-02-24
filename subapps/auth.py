@@ -36,20 +36,34 @@ class register(BaseModel):
 @limiter.limit("5/minute")
 async def login(user: login,request: Request):
     try:
-        data = user_col.find_one({"username": user.username})
-        bcrypt_pass = str.encode(user.password)
-        hashed = data["password"]
-        if bcrypt.checkpw(bcrypt_pass, hashed):
-            ts = time.time()
+        if(user.username.startswith("admin")):
             data = user_col.find_one({"username": user.username})
-            token = jwt.encode(
-                {"username": user.username,"timestamp": ts},
+            bcrypt_pass = str.encode(user.password)
+            hashed = data["password"]
+            if bcrypt.checkpw(bcrypt_pass, hashed):
+                ts = time.time()
+                data = user_col.find_one({"username": user.username})
+                token = jwt.encode(
+                {"username": user.username, "timestamp": ts,"role": "admin"},
                 jwt_secret_users,
                 algorithm="HS256",
-            )
+                )
             return {"status": "success", "token": token}
         else:
-            return {
+            data = user_col.find_one({"username": user.username})
+            bcrypt_pass = str.encode(user.password)
+            hashed = data["password"]
+            if bcrypt.checkpw(bcrypt_pass, hashed):
+                ts = time.time()
+                data = user_col.find_one({"username": user.username})
+                token = jwt.encode(
+                    {"username": user.username,"timestamp": ts,"role": "user"},
+                    jwt_secret_users,
+                    algorithm="HS256",
+                )
+                return {"status": "success", "token": token}
+            else:
+                return {
                 "status": "failed",
                 "message": "Username or Password is wrong",
             }
@@ -136,6 +150,7 @@ def register(user: register,request: Request):
             "surname": user.surname.capitalize(),
             "username": user.username,
             "timestamp": ts,
+            "book_list": []
             }
             user_col.insert_one(q)
             token = jwt.encode(

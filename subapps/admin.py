@@ -58,8 +58,10 @@ async def add_book(book: books,request: Request):
             "number_of_page": book.number_of_page,
             "kind": book.kind,
             "price": book.price,
+            "new_price":0,
             "number_of_sell":book.number_of_sell,
             "amount_of_stock":book.amount_of_stock,
+            "amount_of_discount":None,
             "timestamp":ts
         }
         book_col.insert_one(q)
@@ -80,7 +82,26 @@ async def make_discount(book_name:str, discount_ratio:int,request: Request):
         data = book_col.find_one({"book_name": book_name})
         temp=data["price"]
         new_temp=(temp*discount_ratio)/100
-        book_col.update({"book_name": book_name}, {"$set": {"price": new_temp}})
+        new_temp=temp-new_temp
+        book_col.update({"book_name": book_name}, {"$set": {"new_price": new_temp}})
+        book_col.update({"book_name": book_name}, {"$set": {"amount_of_discount": discount_ratio}})
+        return {"status": "succes"}
+    except:
+        return JSONResponse(
+                status_code=503,
+                content={
+                "status": "failed",
+                "message": "Database error!",
+            },
+        )
+
+@admin.post("/remove/discount/")
+@limiter.limit("5/minute")
+async def remove_discount(book_name:str,request: Request):
+    try:
+        data = book_col.find_one({"book_name": book_name})
+        book_col.update({"book_name": book_name}, {"$set": {"amount_of_discount": 0}})
+        book_col.update({"book_name": book_name}, {"$set": {"new_price": 0}})
         return {"status": "succes"}
     except:
         return JSONResponse(
@@ -96,10 +117,13 @@ async def make_discount(book_name:str, discount_ratio:int,request: Request):
 @limiter.limit("5/minute")
 async def update_book_name(book_name:str,update: update_data,request: Request):
     try:
-        book_col.update_one(
-            {"book_name": book_name}, {"$set": {"book_name": update.data.capitalize()}}
-        )
-        return {"status": "succes"}
+        if(book_col.find_one({"book_name": book_name})!=None):
+            book_col.update_one({"book_name": book_name}, {"$set": {"book_name": update.data.capitalize()}}
+            )
+            return {"status": "success"} 
+        else:
+            return {"failed": "Book could not found."}
+            
     except:
         return JSONResponse(
                 status_code=400,
@@ -113,10 +137,14 @@ async def update_book_name(book_name:str,update: update_data,request: Request):
 @limiter.limit("5/minute")
 async def update_author_name(book_name:str,update: update_data,request: Request):
     try:
-        book_col.update_one(
+        if(book_col.find_one({"book_name": book_name})!=None):
+            book_col.update_one(
             {"book_name": book_name}, {"$set": {"author": update.data.capitalize()}}
-        )
-        return {"status": "succes"}
+            )
+            return {"status": "success"}
+        else:
+             return {"failed": "Book could not found."}
+           
     except:
         return JSONResponse(
                 status_code=503,
@@ -133,15 +161,29 @@ async def get_book_list(request: Request):
         temp2=[]
         temp=book_col.find({})
         for x in temp:
-            q = {
+            if(x.get("new_price")!=0):
+                q = {
                 "book_name": x.get("book_name"),
                 "author":x.get("author"),
                 "kind": x.get("kind"),
                 "amount_of_stock":x.get("amount_of_stock"),
                 "number_of_page": x.get("number_of_page"),
                 "number_of_sell": x.get("number_of_sell"),
+                "price": x.get("price"),
+                "amount_of_discount" + " %" :  x.get("amount_of_discount"),
+                "new_price": x.get("new_price")}
+                temp2.append(q)
+            else:
+                b = {
+                "book_name": x.get("book_name"),
+                "author":x.get("author"),
+                "kind": x.get("kind"),
+                "amount_of_stock":x.get("amount_of_stock"),
+                "number_of_page": x.get("number_of_page"),
+                "number_of_sell": x.get("number_of_sell"),
+                "amount_of_discount" + " %" :  x.get("amount_of_discount"),
                 "price": x.get("price")}
-            temp2.append(q)
+                temp2.append(b)
         return {"status": "success", "list": temp2}
     except:
         return JSONResponse(
@@ -156,10 +198,13 @@ async def get_book_list(request: Request):
 @limiter.limit("5/minute")
 async def update_number_of_page(book_name:str,update: update_data,request: Request):
     try:
-        book_col.update_one(
+        if(book_col.find_one({"book_name": book_name})!=None):
+            book_col.update_one(
             {"book_name": book_name}, {"$set": {"number_of_page": int(update.data)}}
-        )
-        return {"status": "succes"}
+            )
+            return {"status": "success"}
+        else: 
+            return {"failed": "Book could not found."}
     except:
         return JSONResponse(
                 status_code=503,
@@ -172,10 +217,14 @@ async def update_number_of_page(book_name:str,update: update_data,request: Reque
 @limiter.limit("5/minute")
 async def update_kind(book_name:str,update: update_data,request: Request):
     try:
-        book_col.update_one(
+        if(book_col.find_one({"book_name": book_name})!=None):
+            book_col.update_one(
             {"book_name": book_name}, {"$set": {"kind": update.data}}
-        )
-        return {"status": "succes"}
+            )
+            return {"status": "success"}
+           
+        else:
+            return {"failed": "Book could not found."}
     except:
         return JSONResponse(
                 status_code=503,
@@ -188,10 +237,13 @@ async def update_kind(book_name:str,update: update_data,request: Request):
 @limiter.limit("5/minute")
 async def uptade_price_of_book(book_name:str,update: update_data,request: Request):
     try:
-        book_col.update_one(
+        if(book_col.find_one({"book_name": book_name})!=None):
+            book_col.update_one(
             {"book_name": book_name}, {"$set": {"price": int(update.data)}}
-        )
-        return {"status": "succes"}
+            )
+            return {"status": "success"}
+        else:
+            return {"failed": "Book could not found."}
     except:
         return JSONResponse(
                 status_code=503,
@@ -204,10 +256,14 @@ async def uptade_price_of_book(book_name:str,update: update_data,request: Reques
 @limiter.limit("5/minute")
 async def uptade_number_of_sell(book_name:str,update: update_data,request: Request):
     try:
-        book_col.update_one(
+        if(book_col.find_one({"book_name": book_name})!=None):
+            book_col.update_one(
             {"book_name": book_name}, {"$set": {"number_of_sell": int(update.data)}}
-        )
-        return {"status": "succes"}
+            )
+            return {"status": "success"}
+        else:
+            return {"failed": "Book could not found."}
+           
     except:
         return JSONResponse(
                 status_code=503,
@@ -220,10 +276,13 @@ async def uptade_number_of_sell(book_name:str,update: update_data,request: Reque
 @limiter.limit("5/minute")
 async def uptade_amount_of_stock(book_name:str,update: update_data,request: Request):
     try:
-        book_col.update_one(
+        if(book_col.find_one({"book_name": book_name})!=None):
+            book_col.update_one(
             {"book_name": book_name}, {"$set": {"amount_of_stock": int(update.data)}}
-        )
-        return {"status": "succes"}
+            )
+            return {"status": "success"}
+        else:
+            return {"failed": "Book could not found."}
     except:
         return JSONResponse(
                 status_code=503,
@@ -237,8 +296,10 @@ async def uptade_amount_of_stock(book_name:str,update: update_data,request: Requ
 async def delete_book(update:update_data,request: Request):
     try:
         q={"book_name": update.data}
-        book_col.remove(q)
-        return {"status": "succes"}
+        if(book_col.remove(q)):
+            return {"status": "success"}
+        else:    
+            return {"failed": "Book could not found."}
     except:
         return JSONResponse(
                 status_code=503,
